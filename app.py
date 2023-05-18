@@ -1,40 +1,57 @@
-import os
-from datetime import datetime
+from googlesearch import search
+from flask import Flask, request, abort
 
-from flask import Flask, abort, request
-
-# https://github.com/line/line-bot-sdk-python
-from linebot import LineBotApi, WebhookHandler
-from linebot.exceptions import InvalidSignatureError
-from linebot.models import MessageEvent, TextMessage, TextSendMessage
+from linebot import (
+    LineBotApi, WebhookHandler
+)
+from linebot.exceptions import (
+    InvalidSignatureError
+)
+from linebot.models import (
+    MessageEvent, TextMessage, TextSendMessage,
+)
 
 app = Flask(__name__)
 
-line_bot_api = LineBotApi(os.environ.get("CHANNEL_ACCESS_TOKEN"))
-handler = WebhookHandler(os.environ.get("CHANNEL_SECRET"))
+line_bot_api = LineBotApi('8eAMDtKP5QlPkKbgcd3040qBqPaPHSTcCFsDx2lYo9Zx6JwojKq9woEJoRe2ojUvrv4uyToLQqExQ15Y2nd5ARCKuvL1RXePUiHmQQ/iYfmC/30GYLuSEfmSUTGWsxvZDBFiLT5cN6lt+1fyEb3wVAdB04t89/1O/w1cDnyilFU=')
+handler = WebhookHandler('b5858c3a3ed5e7333d2be5442e98a014')
 
 
-@app.route("/", methods=["GET", "POST"])
+@app.route("/callback", methods=['POST'])
 def callback():
+    # get X-Line-Signature header value
+    signature = request.headers['X-Line-Signature']
 
-    if request.method == "GET":
-        return "Hello Heroku"
-    if request.method == "POST":
-        signature = request.headers["X-Line-Signature"]
-        body = request.get_data(as_text=True)
+    # get request body as text
+    body = request.get_data(as_text=True)
+    app.logger.info("Request body: " + body)
 
-        try:
-            handler.handle(body, signature)
-        except InvalidSignatureError:
-            abort(400)
+    # handle webhook body
+    try:
+        handler.handle(body, signature)
+    except InvalidSignatureError:
+        print("Invalid signature. Please check your channel access token/channel secret.")
+        abort(400)
 
-        return "OK"
+    return 'OK'
 
 
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
-    get_message = event.message.text
 
-    # Send To Line
-    reply = TextSendMessage(text=f"{get_message}")
-    line_bot_api.reply_message(event.reply_token, reply)
+    if event.message.text[0:2] == '搜尋':        
+
+        query = event.message.text[2:]
+        Str = ''
+        for j in search(query, stop=5, pause=1.0): 
+            Str = Str + '\n' + '\n' + j
+
+        Str = Str[2:]
+
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(Str))        
+
+
+if __name__ == "__main__":
+    app.run()
